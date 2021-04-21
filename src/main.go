@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,36 +14,19 @@ type Vehicle struct {
 	Year  int    `json:"madeIn"`
 }
 
-var length = 1 //to start at least 0 length and increase overtime
+var length = 0 //to start at least 0 length and increase overtime
 var storeData = make([]Vehicle, length)
 
 func main() {
 
 	router := gin.Default()
 
-	log.Println(router)
-	var dummy Vehicle
-	dummy.Id = "1"
-	dummy.Name = "Mercedes"
-	dummy.Model = "Benzx"
-	dummy.Year = 1998
-
-	storeData = append(storeData, dummy)
-
 	//GET '/'  --> all cars
 	router.GET("/", func(c *gin.Context) {
-
-		if len(storeData) > 1 {
-			c.JSON(200, gin.H{
-				"message":  "hit the get route",
-				"vehicles": storeData[1:],
-			})
-		} else {
-			c.JSON(200, gin.H{
-				"message": "hit the get route",
-			})
-		}
-
+		c.JSON(200, gin.H{
+			"message":  "hit the get route",
+			"vehicles": storeData,
+		})
 	})
 
 	//POST '/cars'  --> create cars
@@ -56,6 +38,7 @@ func main() {
 			c.JSON(200, gin.H{"message": "Failed."})
 			return
 		}
+		storeData = append(storeData, motor)
 
 		c.JSON(200, gin.H{
 			"message": "hit the POST cars route & success post",
@@ -69,10 +52,9 @@ func main() {
 	//GET '/cars/:carid'  --> get single car
 	router.GET("/cars/:carid", func(c *gin.Context) {
 		carid := c.Param("carid")
-		log.Println(carid)
 		var car Vehicle
 
-		for i := 1; i < len(storeData); i++ {
+		for i := 0; i < len(storeData); i++ {
 			if storeData[i].Id == carid {
 				car = storeData[i]
 			}
@@ -90,7 +72,7 @@ func main() {
 		var car Vehicle
 		err := json.Unmarshal(body, &car) //since body is byte[] --> unmarshalling to change to json byte data to struct
 
-		for i := 1; i < len(storeData); i++ {
+		for i := 0; i < len(storeData); i++ {
 			if storeData[i].Id != car.Id && err == nil {
 				c.JSON(404, gin.H{
 					"message": "car id not found",
@@ -109,21 +91,15 @@ func main() {
 	router.DELETE("/cars/:carid", func(c *gin.Context) {
 		carid := c.Param("carid")
 
-		for i := 1; i < len(storeData); i++ {
+		for i := 0; i < len(storeData); i++ {
 			if storeData[i].Id == carid {
 				storeData = append(storeData[:i], storeData[i+1:]...)
 			}
 		}
-		if len(storeData) > 1 {
-			c.JSON(200, gin.H{
-				"message":  "hit the get route",
-				"vehicles": storeData[1:],
-			})
-		} else {
-			c.JSON(200, gin.H{
-				"message": "hit the get route",
-			})
-		}
+		c.JSON(200, gin.H{
+			"message":  "hit the get route",
+			"vehicles": storeData,
+		})
 	})
 
 	router.Run()
