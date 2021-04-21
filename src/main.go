@@ -35,7 +35,7 @@ func main() {
 
 		err := c.ShouldBindJSON(&motor) //binds the input data into 'motor' var
 		if err != nil {
-			c.JSON(200, gin.H{"message": "Failed."})
+			c.JSON(400, gin.H{"message": "Failed."})
 			return
 		}
 		storeData = append(storeData, motor)
@@ -55,6 +55,13 @@ func main() {
 		var car Vehicle
 
 		for i := 0; i < len(storeData); i++ {
+			//at the end and id not found
+			if i == len(storeData)-1 && storeData[i].Id != carid {
+				c.JSON(404, gin.H{
+					"message": "car id not found",
+				})
+				return
+			}
 			if storeData[i].Id == carid {
 				car = storeData[i]
 			}
@@ -77,6 +84,7 @@ func main() {
 				c.JSON(404, gin.H{
 					"message": "car id not found",
 				})
+				return
 			} else {
 				storeData[i] = car
 				c.JSON(200, gin.H{
@@ -92,6 +100,14 @@ func main() {
 		carid := c.Param("carid")
 
 		for i := 0; i < len(storeData); i++ {
+
+			//at the end and id not found
+			if i == len(storeData)-1 && storeData[i].Id != carid {
+				c.JSON(404, gin.H{
+					"message": "car id not found",
+				})
+				return
+			}
 			if storeData[i].Id == carid {
 				storeData = append(storeData[:i], storeData[i+1:]...)
 			}
