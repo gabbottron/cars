@@ -1,71 +1,77 @@
 package main
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"log"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Vehicle struct {
-	Id    string `json:"id" binding:"required"`
-	Name  string `json:"title" binding:"required"`
-	Model string `json:"type" binding:"required"`
-	Year  int    `json:"madeIn"`
+	Id    int    `json:"id"`
+	Make  string `json:"make" binding:"required"`
+	Model string `json:"model" binding:"required"`
+	Year  int    `json:"year" binding:"required"`
 }
 
 var length = 0 //to start at least 0 length and increase overtime
 var storeData = make([]Vehicle, length)
+var nextId = 1 // the next ID in the database
 
 func main() {
 
 	router := gin.Default()
 
 	//GET '/'  --> all cars
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message":  "hit the get route",
-			"vehicles": storeData,
-		})
+	router.GET("/cars", func(c *gin.Context) {
+		c.JSON(200, storeData)
 	})
 
 	//POST '/cars'  --> create cars
 	router.POST("/cars", func(c *gin.Context) {
-		var motor Vehicle
+		var car Vehicle
 
-		err := c.ShouldBindJSON(&motor) //binds the input data into 'motor' var
+		err := c.ShouldBindJSON(&car) //binds the input data into 'motor' var
 		if err != nil {
-			c.JSON(400, gin.H{"message": "Failed."})
+			c.JSON(422, gin.H{"message": "Unprocessable entity!"})
 			return
 		}
-		storeData = append(storeData, motor)
 
-		c.JSON(200, gin.H{
-			"message": "hit the POST cars route & success post",
-			"id":      motor.Id,    //write in 'id' --> `json:"id"`
-			"title":   motor.Name,  //write in 'title' --> `json:"title" binding:"required"`
-			"type":    motor.Model, //write in 'type' --> `json:"type" binding:"required"`
-			"madeIn":  motor.Year,  //write in 'madeIn' --> `json:"madeIn"`
-		})
+		car.Id = nextId
+		nextId++
+
+		storeData = append(storeData, car)
+
+		c.JSON(200, car)
 	})
 
 	//GET '/cars/:carid'  --> get single car
 	router.GET("/cars/:carid", func(c *gin.Context) {
-		carid := c.Param("carid")
-		var car Vehicle
+		carid_param := c.Param("carid")
+		// convert carid param to int
+		carid, err := strconv.Atoi(c.Param(carid_param))
+		if err != nil {
+			c.JSON(404, gin.H{
+				"message": "car id not valid",
+			})
+			return
+		}
 
+		var car Vehicle
 		for i := 0; i < len(storeData); i++ {
-			//at the end and id not found
-			if i == len(storeData)-1 && storeData[i].Id != carid {
-				c.JSON(404, gin.H{
-					"message": "car id not found",
-				})
-				return
-			}
 			if storeData[i].Id == carid {
 				car = storeData[i]
+				break
 			}
 		}
+		if car.Id == 0 {
+			// the car was not found
+			c.JSON(404, gin.H{
+				"message": "car not found",
+			})
+			return
+		}
+
 		c.JSON(200, gin.H{
 			"message": "hit the  GET single car route",
 			"car":     car,
@@ -74,47 +80,70 @@ func main() {
 
 	//PUT '/cars/:carid'  --> modify that single car
 	router.PUT("/cars/:carid", func(c *gin.Context) {
-
-		body, _ := ioutil.ReadAll(c.Request.Body)
-		var car Vehicle
-		err := json.Unmarshal(body, &car) //since body is byte[] --> unmarshalling to change to json byte data to struct
-
-		for i := 0; i < len(storeData); i++ {
-			if storeData[i].Id != car.Id && err == nil {
-				c.JSON(404, gin.H{
-					"message": "car id not found",
-				})
-				return
-			} else {
-				storeData[i] = car
-				c.JSON(200, gin.H{
-					"car": storeData[i],
-				})
-			}
+		carid, err := strconv.Atoi(c.Param("carid"))
+		if err != nil {
+			log.Println(err.Error())
+			c.JSON(404, gin.H{
+				"message": "car id not valid",
+			})
+			return
 		}
 
+		var car Vehicle
+
+		err = c.ShouldBindJSON(&car) //binds the input data into 'motor' var
+		if err != nil {
+			c.JSON(422, gin.H{"message": "Unprocessable entity!"})
+			return
+		}
+
+		found := false
+		for i := 0; i < len(storeData); i++ {
+			if storeData[i].Id == carid {
+				car.Id = carid
+				storeData[i] = car
+				found = true
+				break
+			}
+		}
+		if !found {
+			// the car was not found
+			c.JSON(404, gin.H{
+				"message": "car not found",
+			})
+			return
+		}
+		c.JSON(200, car)
 	})
 
 	//DELETE '/cars/:carid'  --> delete that single car
 	router.DELETE("/cars/:carid", func(c *gin.Context) {
-		carid := c.Param("carid")
+		carid, err := strconv.Atoi(c.Param("carid"))
+		if err != nil {
+			c.JSON(404, gin.H{
+				"message": "car id not valid",
+			})
+			return
+		}
 
+		found := false
 		for i := 0; i < len(storeData); i++ {
-
-			//at the end and id not found
-			if i == len(storeData)-1 && storeData[i].Id != carid {
-				c.JSON(404, gin.H{
-					"message": "car id not found",
-				})
-				return
-			}
 			if storeData[i].Id == carid {
 				storeData = append(storeData[:i], storeData[i+1:]...)
+				found = true
+				break
 			}
 		}
+
+		if !found {
+			c.JSON(404, gin.H{
+				"message": "car not found",
+			})
+			return
+		}
+
 		c.JSON(200, gin.H{
-			"message":  "hit the get route",
-			"vehicles": storeData,
+			"message": "car successfully deleted",
 		})
 	})
 
