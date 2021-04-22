@@ -47,9 +47,7 @@ func main() {
 
 	//GET '/cars/:carid'  --> get single car
 	router.GET("/cars/:carid", func(c *gin.Context) {
-		carid_param := c.Param("carid")
-		// convert carid param to int
-		carid, err := strconv.Atoi(c.Param(carid_param))
+		carid, err := strconv.Atoi(c.Param("carid"))
 		if err != nil {
 			c.JSON(404, gin.H{
 				"message": "car id not valid",
@@ -72,10 +70,7 @@ func main() {
 			return
 		}
 
-		c.JSON(200, gin.H{
-			"message": "hit the  GET single car route",
-			"car":     car,
-		})
+		c.JSON(200, car)
 	})
 
 	//PUT '/cars/:carid'  --> modify that single car
